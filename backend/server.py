@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -124,8 +124,29 @@ async def startup_db_client():
 
 
 @api_router.get("/")
-async def root():
+async def api_root():
     return {"message": "Portfolio API is running", "version": "2.0.0"}
+
+
+@app.api_route("/", methods=["GET", "HEAD"])
+async def root():
+    return {
+        "status": "ok",
+        "message": "Portfolio API is running",
+        "version": "2.0.0",
+        "docs": "/docs",
+        "api": "/api/",
+    }
+
+
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 @api_router.get("/portfolio/info")
