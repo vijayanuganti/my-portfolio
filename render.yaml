@@ -18,6 +18,8 @@ services:
         value: false
       - key: GITHUB_USERNAME
         value: vijayanuganti
+      - key: GITHUB_TOKEN
+        sync: false
       - key: MONGO_URL
         sync: false
       - key: ALLOWED_ORIGINS

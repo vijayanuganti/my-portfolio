@@ -83,6 +83,7 @@ const GitHubStats = () => {
                 alt="GitHub stats"
                 className="w-full rounded-lg"
                 loading="lazy"
+                referrerPolicy="no-referrer"
               />
             </Card>
             <Card className="card-glow p-4 bg-card border-border overflow-hidden">
@@ -91,6 +92,7 @@ const GitHubStats = () => {
                 alt="Top languages"
                 className="w-full rounded-lg"
                 loading="lazy"
+                referrerPolicy="no-referrer"
               />
             </Card>
           </div>
@@ -101,6 +103,7 @@ const GitHubStats = () => {
                 alt="GitHub streak"
                 className="w-full rounded-lg"
                 loading="lazy"
+                referrerPolicy="no-referrer"
               />
             </Card>
           </div>

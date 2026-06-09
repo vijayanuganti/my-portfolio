@@ -27,6 +27,7 @@ from models import (
 )
 from seed_database import purge_and_seed
 from email_service import send_contact_notification
+from github_service import fetch_github_stats
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -224,37 +225,7 @@ async def get_blog_posts():
 
 @api_router.get("/github/stats")
 async def get_github_stats():
-    username = GITHUB_USERNAME
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as http_client:
-            info_url = f"https://api.github.com/users/{username}"
-            info_resp = await http_client.get(
-                info_url,
-                headers={"Accept": "application/vnd.github+json"},
-            )
-            if info_resp.status_code == 404:
-                raise HTTPException(status_code=404, detail="GitHub user not found")
-            info_resp.raise_for_status()
-            user = info_resp.json()
-
-        return {
-            "username": username,
-            "name": user.get("name") or username,
-            "avatar_url": user.get("avatar_url"),
-            "public_repos": user.get("public_repos", 0),
-            "followers": user.get("followers", 0),
-            "following": user.get("following", 0),
-            "html_url": user.get("html_url"),
-            "bio": user.get("bio"),
-            "stats_cards": {
-                "stats": f"https://github-readme-stats.vercel.app/api?username={username}&show_icons=true&theme=tokyonight&hide_border=true&bg_color=0f172a&title_color=6366f1&icon_color=10b981",
-                "top_langs": f"https://github-readme-stats.vercel.app/api/top-langs/?username={username}&layout=compact&theme=tokyonight&hide_border=true&bg_color=0f172a&title_color=6366f1",
-                "streak": f"https://github-readme-streak-stats.herokuapp.com/?user={username}&theme=tokyonight&hide_border=true&background=0f172a&ring=6366f1&fire=10b981&currStreakNum=ffffff",
-            },
-        }
-    except httpx.HTTPError as e:
-        logger.error("GitHub API error: %s", str(e))
-        raise HTTPException(status_code=502, detail="Failed to fetch GitHub stats")
+    return await fetch_github_stats(GITHUB_USERNAME)
 
 
 @api_router.post("/contact")

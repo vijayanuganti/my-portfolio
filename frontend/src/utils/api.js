@@ -91,7 +91,7 @@ export const api = {
    * @returns {Promise<Object>} GitHub user stats and readme-stat card URLs
    */
   getGitHubStats: async () => {
-    const { data } = await client.get('/github/stats');
+    const { data } = await client.get('/github/stats', { timeout: 45000 });
     return data;
   },
 
