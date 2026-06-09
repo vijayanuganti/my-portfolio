@@ -10,9 +10,8 @@ const PROFILE_PHOTO = `${process.env.PUBLIC_URL}/images/profile.jpg`;
 
 const ROLES = [
   'Python Developer',
-  'Dash & Plotly Engineer',
-  'React.js Developer',
-  'Healthcare Data Apps',
+  'Full-Stack Developer',
+  'React Developer',
 ];
 
 const Hero = ({ onPortfolioLoaded }) => {
