@@ -1,0 +1,16 @@
+@keyframes tech-stack-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.tech-stack-scroll {
+  animation: tech-stack-scroll 30s linear infinite;
+}
+
+.tech-stack-scroll:hover {
+  animation-play-state: paused;
+}
