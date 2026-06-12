@@ -28,14 +28,18 @@ A modern, full-stack personal portfolio built with **React 19**, **FastAPI**, an
 ## Features
 
 - **Hero section** — Profile photo, typewriter roles, resume popover (View / Download)
+- **Tech stack marquee** — Animated scrolling strip of core technologies
 - **Featured projects** — Filterable showcase with flagship apps (ChatFlow, Sarat Electronics, healthcare portals)
 - **Skills** — Categorized proficiency bars with tech icons
-- **Experience timeline** — Work history with responsibilities and tech stacks
+- **Experience timeline** — Multi-role work history with responsibilities and tech stacks
 - **About & education** — Multi-entry education history and strengths
-- **Contact form** — Rate-limited submissions saved to MongoDB + email via Brevo
-- **GitHub stats** — Live contribution data from GitHub API
+- **GitHub stats** — Live profile data with 15-minute caching, graceful fallback, and readme-stat cards
+- **Testimonials & certifications** — Social proof and awards sections
+- **Blog** — Placeholder posts ready for future content
+- **Contact form** — Rate-limited submissions (3/hour per IP) saved to MongoDB + email via Brevo
+- **Visit analytics** — Page views tracked on load (`page_visits` collection)
 - **Dark / light theme** — Persistent theme toggle
-- **Fully responsive** — Mobile-first layout with scroll animations
+- **Fully responsive** — Mobile-first layout with scroll animations and per-section error boundaries
 
 ---
 
@@ -110,7 +114,7 @@ cp .env.example .env
 
 Edit `backend/.env` with your MongoDB URI, Brevo keys, and CORS origins.
 
-Seed the database:
+Seed the database (optional on first run — the API auto-seeds when `portfolio_info` is empty):
 
 ```bash
 python seed_database.py
@@ -129,7 +133,7 @@ uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 
 ```bash
 cd frontend
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps   # or: yarn install
 cp .env.example .env
 ```
 
@@ -153,6 +157,8 @@ App runs at **http://localhost:3000**
 |-------|------|
 | Profile photo | `frontend/public/images/profile.jpg` |
 | Resume PDF | `frontend/public/pdfs/Vijay_resume.pdf` |
+| Favicon | `frontend/public/favicon.svg`, `favicon.ico`, `favicon.png` |
+| Apple touch icon | `frontend/public/apple-touch-icon.png` |
 
 ---
 
@@ -164,8 +170,9 @@ App runs at **http://localhost:3000**
 |----------|-------------|
 | `MONGO_URL` | MongoDB Atlas connection URI |
 | `DB_NAME` | Database name (default: `portfolio_db`) |
-| `RESEED_DB` | Set `true` once to reload from `seed_data.py` |
+| `RESEED_DB` | Set `true` once to reload from `seed_data.py` on startup |
 | `GITHUB_USERNAME` | GitHub username for stats widget |
+| `GITHUB_TOKEN` | Optional PAT for higher GitHub API rate limits (recommended on Render) |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins |
 | `BREVO_API_KEY` | Brevo API key for contact emails |
 | `BREVO_SENDER_EMAIL` | Verified sender in Brevo |
@@ -196,7 +203,9 @@ python seed_database.py
 python seed_database.py --purge-all
 ```
 
-Collections: `portfolio_info`, `projects`, `about`, `skills`, `experience`, `certifications`, `testimonials`, `blog_posts`
+**Content collections** (reseeded from `seed_data.py`): `portfolio_info`, `projects`, `about`, `skills`, `experience`, `certifications`, `testimonials`, `blog_posts`
+
+**Runtime collections** (preserved on reseed): `contact_messages`, `page_visits`
 
 See [backend/DATABASE.md](backend/DATABASE.md) for schema details.
 
@@ -208,6 +217,10 @@ python test_email.py
 ```
 
 If Brevo returns an IP error, disable **Authorized IPs** at [Brevo Security](https://app.brevo.com/security/authorised_ips) or add your server IP.
+
+### GitHub stats on production
+
+The `/api/github/stats` endpoint caches responses for 15 minutes. If the GitHub API rate-limits your server (common on Render without a token), the API returns readme-stat card URLs with `degraded: true` instead of failing. Set `GITHUB_TOKEN` in Render for reliable live counts.
 
 ---
 
@@ -221,6 +234,7 @@ my-portfolio/
 │   ├── seed_data.py           # Portfolio content (edit here)
 │   ├── seed_database.py       # Purge + seed script
 │   ├── email_service.py       # Brevo email integration
+│   ├── github_service.py      # GitHub stats with cache & fallback
 │   ├── test_email.py          # Email delivery test
 │   ├── requirements.txt       # Dev dependencies
 │   ├── requirements-prod.txt  # Production (Render)
@@ -252,7 +266,9 @@ Base URL: `http://localhost:8001/api`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Health check |
+| `GET` | `/health` | Render health check (root, not under `/api`) |
+| `GET` | `/` | API status, version, links to `/docs` and `/api/` |
+| `GET` | `/api/` | API root message |
 | `GET` | `/portfolio/info` | Name, title, links, tagline |
 | `GET` | `/projects` | All projects (sorted by id) |
 | `GET` | `/projects/{id}` | Single project |
@@ -262,9 +278,12 @@ Base URL: `http://localhost:8001/api`
 | `GET` | `/certifications` | Awards & activities |
 | `GET` | `/testimonials` | Testimonials |
 | `GET` | `/blog` | Blog posts |
-| `GET` | `/github/stats` | GitHub contribution stats |
-| `POST` | `/contact` | Submit contact form (rate-limited) |
+| `GET` | `/github/stats` | GitHub profile stats (cached 15 min; degrades gracefully on rate limit) |
+| `POST` | `/contact` | Submit contact form (3 requests/hour per IP) |
 | `POST` | `/analytics/visit` | Track page visit |
+| `GET` | `/analytics/visit` | Visit totals (`total_visits`, `visits_today`) |
+
+Interactive docs: **http://localhost:8001/docs**
 
 ---
 
@@ -274,7 +293,7 @@ Base URL: `http://localhost:8001/api`
 
 1. Push repo to GitHub
 2. [Render Dashboard](https://dashboard.render.com) → **New → Blueprint** → connect repo
-3. Set secret env vars: `MONGO_URL`, `ALLOWED_ORIGINS`, Brevo keys
+3. Set secret env vars: `MONGO_URL`, `ALLOWED_ORIGINS`, Brevo keys, and optionally `GITHUB_TOKEN`
 4. Deploy → note URL: `https://portfolio-api.onrender.com`
 
 **MongoDB Atlas:** allow `0.0.0.0/0` in Network Access  
@@ -308,6 +327,7 @@ Redeploy Render after updating CORS.
 - [ ] Brevo sender email verified
 - [ ] Brevo Authorized IPs updated for Render
 - [ ] `RESEED_DB=false` on production
+- [ ] `GITHUB_TOKEN` set on Render (avoids GitHub API rate-limit fallbacks)
 - [ ] `ALLOWED_ORIGINS` includes Vercel URL
 - [ ] `REACT_APP_BACKEND_URL` points to Render API
 

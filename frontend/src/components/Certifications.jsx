@@ -36,7 +36,7 @@ const Certifications = () => {
 
   if (loading) {
     return (
-      <section className="py-20 px-6 border-t border-border">
+      <section className="hidden md:block py-20 px-6 border-t border-border">
         <div className="max-w-7xl mx-auto grid sm:grid-cols-2 gap-4">
           {[1, 2].map((i) => (
             <div key={i} className="h-28 bg-card animate-pulse rounded-xl" />
@@ -49,7 +49,7 @@ const Certifications = () => {
   if (!awards.length) return null;
 
   return (
-    <section id="awards" className="py-20 px-6 border-t border-border">
+    <section id="awards" className="hidden md:block py-20 px-6 border-t border-border">
       <div className="max-w-7xl mx-auto">
         <SectionHeader
           title="Awards & Activities"

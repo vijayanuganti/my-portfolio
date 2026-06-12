@@ -13,6 +13,7 @@ import Certifications from '../components/Certifications';
 import Blog from '../components/Blog';
 import Contact from '../components/Contact';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import MobileBottomNav from '../components/MobileBottomNav';
 import { api } from '../utils/api';
 
 const Home = () => {
@@ -23,8 +24,9 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-[4.5rem] md:pb-0">
       <Header portfolio={portfolio} />
+      <MobileBottomNav />
 
       <Hero onPortfolioLoaded={setPortfolio} />
 

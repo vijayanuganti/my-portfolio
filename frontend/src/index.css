@@ -112,6 +112,39 @@ code {
   .card-glow:hover {
     box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 8px 32px rgba(99, 102, 241, 0.1);
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-bounce,
+  .animate-glow-pulse,
+  .animate-spin,
+  .animate-pulse,
+  .fade-in,
+  .fade-in-up {
+    animation: none !important;
+  }
 }
 
 @layer base {
