@@ -8,6 +8,7 @@ import { api } from '../utils/api';
 import SectionHeader from './common/SectionHeader';
 import ScrollReveal from './common/ScrollReveal';
 import { PROJECT_FILTERS, getTechIcon } from '../constants/techIcons';
+import { ProjectsSectionSkeleton } from './common/SectionSkeletons';
 
 const ProjectCard = ({ project, index, noReveal = false }) => {
   const card = (
@@ -125,15 +126,7 @@ const Projects = () => {
   }, [projects, filter]);
 
   if (loading) {
-    return (
-      <section id="projects" className="py-16 md:py-20 px-4 sm:px-6 border-t border-border">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-64 bg-card rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </section>
-    );
+    return <ProjectsSectionSkeleton />;
   }
 
   if (error) {

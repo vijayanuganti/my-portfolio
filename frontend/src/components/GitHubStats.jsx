@@ -25,14 +25,25 @@ const GitHubStats = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [streakSrc, setStreakSrc] = useState(null);
 
   useEffect(() => {
     api
       .getGitHubStats()
-      .then(setStats)
+      .then((data) => {
+        setStats(data);
+        setStreakSrc(data.stats_cards?.streak);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleStreakError = () => {
+    const fallback = stats?.stats_cards?.streak_fallback;
+    if (fallback && streakSrc !== fallback) {
+      setStreakSrc(fallback);
+    }
+  };
 
   if (loading) {
     return (
@@ -99,11 +110,12 @@ const GitHubStats = () => {
           <div className="mt-6 flex justify-center">
             <Card className="card-glow p-4 bg-card border-border max-w-2xl w-full overflow-hidden">
               <img
-                src={stats.stats_cards.streak}
+                src={streakSrc || stats.stats_cards.streak}
                 alt="GitHub streak"
                 className="w-full rounded-lg"
                 loading="lazy"
                 referrerPolicy="no-referrer"
+                onError={handleStreakError}
               />
             </Card>
           </div>

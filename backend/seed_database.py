@@ -53,6 +53,9 @@ def normalized_projects() -> list[dict]:
     return [normalize_project(p) for p in projects_data]
 
 
+from db_indexes import ensure_indexes
+
+
 async def drop_collections(db, names: list[str]) -> None:
     existing = set(await db.list_collection_names())
     for name in names:
@@ -143,6 +146,9 @@ async def seed(*, purge_all: bool) -> None:
     for col in CONTENT_COLLECTIONS:
         count = await db[col].count_documents({})
         print(f"  {col}: {count}")
+
+    await ensure_indexes(db)
+    print("Indexes ensured.")
 
     client.close()
 

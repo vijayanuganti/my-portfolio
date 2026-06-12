@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import List
 from collections import defaultdict
 from datetime import datetime, timedelta
-import httpx
 
 from models import (
     Project,
@@ -28,10 +27,13 @@ from models import (
 from seed_database import purge_and_seed
 from email_service import send_contact_notification
 from github_service import fetch_github_stats
+from cache import content_cache
+from db_indexes import ensure_indexes
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+# Persistent Motor client — created once at import, reused for all requests.
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
@@ -47,6 +49,14 @@ ALLOWED_ORIGINS = [
 
 GITHUB_USERNAME = os.environ.get("GITHUB_USERNAME", "vijayanuganti")
 
+# Query limits for portfolio content collections
+MAX_PROJECTS = 100
+MAX_SKILLS = 50
+MAX_EXPERIENCE = 50
+MAX_CERTIFICATIONS = 50
+MAX_TESTIMONIALS = 50
+MAX_BLOG_POSTS = 50
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -60,6 +70,8 @@ api_router = APIRouter(prefix="/api")
 _contact_rate_limit: dict[str, list[datetime]] = defaultdict(list)
 CONTACT_LIMIT = 3
 CONTACT_WINDOW = timedelta(hours=1)
+
+NO_ID = {"_id": 0}
 
 
 def get_client_ip(request: Request) -> str:
@@ -78,6 +90,65 @@ def check_contact_rate_limit(ip: str) -> bool:
         return False
     _contact_rate_limit[ip].append(now)
     return True
+
+
+def normalize_skill_categories(skills: list[dict]) -> list[dict]:
+    """Normalize legacy string-only skills from older seeds."""
+    for cat in skills:
+        normalized = []
+        for s in cat.get("skills", []):
+            if isinstance(s, str):
+                normalized.append({"name": s, "proficiency": 85, "icon": "default"})
+            else:
+                normalized.append(s)
+        cat["skills"] = normalized
+    return skills
+
+
+async def _load_portfolio_info() -> dict:
+    info = await db.portfolio_info.find_one({}, NO_ID)
+    if not info:
+        raise HTTPException(status_code=404, detail="Portfolio info not found")
+    return info
+
+
+async def _load_projects() -> list[dict]:
+    return await db.projects.find({}, NO_ID).sort("id", 1).to_list(MAX_PROJECTS)
+
+
+async def _load_project(project_id: int) -> dict:
+    project = await db.projects.find_one({"id": project_id}, NO_ID)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+async def _load_about() -> dict:
+    about = await db.about.find_one({}, NO_ID)
+    if not about:
+        raise HTTPException(status_code=404, detail="About info not found")
+    return about
+
+
+async def _load_skills() -> list[dict]:
+    skills = await db.skills.find({}, NO_ID).to_list(MAX_SKILLS)
+    return normalize_skill_categories(skills)
+
+
+async def _load_experience() -> list[dict]:
+    return await db.experience.find({}, NO_ID).sort("order", 1).to_list(MAX_EXPERIENCE)
+
+
+async def _load_certifications() -> list[dict]:
+    return await db.certifications.find({}, NO_ID).to_list(MAX_CERTIFICATIONS)
+
+
+async def _load_testimonials() -> list[dict]:
+    return await db.testimonials.find({}, NO_ID).to_list(MAX_TESTIMONIALS)
+
+
+async def _load_blog_posts() -> list[dict]:
+    return await db.blog_posts.find({}, NO_ID).to_list(MAX_BLOG_POSTS)
 
 
 @app.middleware("http")
@@ -117,9 +188,11 @@ async def startup_db_client():
             logger.info("RESEED_DB=true — purging and reloading from seed_data.py")
         if needs_reseed:
             await purge_and_seed(db, purge_all=False)
+            content_cache.invalidate()
             logger.info("Database seeded successfully!")
         else:
             logger.info("Database up to date, skipping seed.")
+        await ensure_indexes(db)
     except Exception as e:
         logger.error("Error during startup: %s", str(e))
 
@@ -142,6 +215,7 @@ async def root():
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
+    """Lightweight liveness probe — no database access."""
     return {"status": "ok"}
 
 
@@ -152,75 +226,56 @@ async def favicon():
 
 @api_router.get("/portfolio/info")
 async def get_portfolio_info():
-    info = await db.portfolio_info.find_one({}, {"_id": 0})
-    if not info:
-        raise HTTPException(status_code=404, detail="Portfolio info not found")
-    return info
+    return await content_cache.get_or_set("portfolio_info", _load_portfolio_info)
 
 
 @api_router.get("/projects", response_model=List[Project])
 async def get_projects():
-    projects = await db.projects.find({}, {"_id": 0}).sort("id", 1).to_list(100)
-    return projects
+    return await content_cache.get_or_set("projects", _load_projects)
 
 
 @api_router.get("/projects/{project_id}")
 async def get_project(project_id: int):
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return await content_cache.get_or_set(
+        f"projects:{project_id}",
+        lambda: _load_project(project_id),
+    )
 
 
 @api_router.get("/about")
 async def get_about():
-    about = await db.about.find_one({}, {"_id": 0})
-    if not about:
-        raise HTTPException(status_code=404, detail="About info not found")
-    return about
+    return await content_cache.get_or_set("about", _load_about)
 
 
 @api_router.get("/skills")
 async def get_skills():
     try:
-        skills = await db.skills.find({}, {"_id": 0}).to_list(100)
-        # Normalize legacy string-only skills from older seeds
-        for cat in skills:
-            normalized = []
-            for s in cat.get("skills", []):
-                if isinstance(s, str):
-                    normalized.append({"name": s, "proficiency": 85, "icon": "default"})
-                else:
-                    normalized.append(s)
-            cat["skills"] = normalized
-        return skills
+        return await content_cache.get_or_set("skills", _load_skills)
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching skills: {str(e)}")
+        logger.error("Error fetching skills: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @api_router.get("/experience", response_model=List[Experience])
 async def get_experience():
-    items = await db.experience.find({}, {"_id": 0}).sort("order", 1).to_list(50)
-    return items
+    return await content_cache.get_or_set("experience", _load_experience)
 
 
 @api_router.get("/certifications", response_model=List[Certification])
 async def get_certifications():
-    items = await db.certifications.find({}, {"_id": 0}).to_list(50)
-    return items
+    return await content_cache.get_or_set("certifications", _load_certifications)
 
 
 @api_router.get("/testimonials", response_model=List[Testimonial])
 async def get_testimonials():
-    items = await db.testimonials.find({}, {"_id": 0}).to_list(50)
-    return items
+    return await content_cache.get_or_set("testimonials", _load_testimonials)
 
 
 @api_router.get("/blog", response_model=List[BlogPost])
 async def get_blog_posts():
-    items = await db.blog_posts.find({}, {"_id": 0}).to_list(50)
-    return items
+    return await content_cache.get_or_set("blog", _load_blog_posts)
 
 
 @api_router.get("/github/stats")

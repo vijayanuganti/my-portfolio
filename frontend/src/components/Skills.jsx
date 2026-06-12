@@ -6,6 +6,7 @@ import ScrollReveal from './common/ScrollReveal';
 import AnimatedProgress from './common/AnimatedProgress';
 import AnimatedSkillRing from './common/AnimatedSkillRing';
 import { getTechIcon } from '../constants/techIcons';
+import { SkillsSectionSkeleton } from './common/SectionSkeletons';
 
 /** Supports API objects { name, proficiency, icon } and legacy string skills. */
 export const normalizeSkill = (skill) => {
@@ -42,15 +43,7 @@ const Skills = () => {
   }, []);
 
   if (loading) {
-    return (
-      <section id="skills" className="py-16 md:py-20 px-4 sm:px-6 border-t border-border">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-48 bg-card rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </section>
-    );
+    return <SkillsSectionSkeleton />;
   }
 
   if (error) {

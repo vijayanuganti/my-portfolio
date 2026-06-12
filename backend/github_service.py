@@ -23,11 +23,16 @@ def _stats_cards(username: str) -> dict[str, str]:
             f"https://github-readme-stats.vercel.app/api/top-langs/?username={username}"
             f"&layout=compact&{theme}"
         ),
-        # Heroku instance is deprecated; use maintained Vercel mirror
+        # Official instance (demos.dev mirror is deprecated/offline)
         "streak": (
-            f"https://github-readme-streak-stats.demos.dev/?user={username}"
-            f"&theme=tokyonight&hide_border=true&background=0f172a"
-            f"&ring=6366f1&fire=10b981&currStreakNum=ffffff"
+            f"https://streak-stats.demolab.com/?user={username}"
+            f"&theme=tokyonight&hide_border=true&background=0F172A"
+            f"&ring=6366F1&fire=10B981&currStreakNum=FFFFFF"
+        ),
+        "streak_fallback": (
+            f"https://github-readme-streak-stats-eight.vercel.app/?user={username}"
+            f"&theme=tokyonight&hide_border=true&background=0F172A"
+            f"&ring=6366F1&fire=10B981&currStreakNum=FFFFFF"
         ),
     }
 
